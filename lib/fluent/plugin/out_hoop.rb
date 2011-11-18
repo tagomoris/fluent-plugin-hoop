@@ -7,11 +7,18 @@ class Fluent::HoopOutput < Fluent::BufferedOutput
   include Fluent::SetTimeKeyMixin
   config_set_default :include_time_key, true
 
-  # config_param :hoge, :string, :default => 'hoge'
+  config_param :hoop_server, :string   # host:port
+  config_param :path, :string          # /path/pattern/to/hdfs/file can use %Y %m %d %H %M %S and %T(tag)
+  config_param :username, :string      # hoop pseudo username
+  
+  config_param :time_format, :string, :default => nil
+  config_param :output_type, :string, :default => 'json' # or 'attr:field' or 'attributes:field1,field2,field3(...)'
+  config_param :add_newline, :bool,   :default => true
+  config_param :field_separator, :string, :default => 'TAB' # or SPACE,COMMA (for output_type=attributes:*)
 
   def initialize
     super
-    # require 'hogepos'
+    require 'net/http'
   end
 
   def configure(conf)
