@@ -3,22 +3,6 @@ require 'helper'
 class HoopOutputTest < Test::Unit::TestCase
   # setup/teardown and tests of dummy hoop server defined at the end of this class...
 
-  # include Fluent::SetTagKeyMixin
-  # config_set_default :include_tag_key, false
-
-  # include Fluent::SetTimeKeyMixin
-  # config_set_default :include_time_key, true
-
-  # config_param :hoop_server, :string   # host:port
-  # config_param :path, :string          # /path/pattern/to/hdfs/file can use %Y %m %d %H %M %S and %T(tag, not-supported-yet)
-  # config_param :username, :string      # hoop pseudo username
-  
-  # config_param :time_format, :string, :default => nil
-  # config_param :output_type, :string, :default => 'json' # or 'attr:field' or 'attributes:field1,field2,field3(...)'
-  # config_param :add_newline, :bool,   :default => false
-  # config_param :field_separator, :string, :default => 'TAB' # or SPACE,COMMA (for output_type=attributes:*)
-
-
   CONFIG = %[
     hoop_server localhost:14000
     path /logs/from/fluentd/foo-%Y%m%d%H
@@ -81,22 +65,26 @@ class HoopOutputTest < Test::Unit::TestCase
     assert_equal 'hoopuser', d.instance.username
 
     assert_nil d.instance.time_format
+
+    assert_equal true, d.instance.output_time
+    assert_nil d.instance.time_format
+    assert_equal true, d.instance.output_tag
     assert_equal 'json', d.instance.output_type
-    assert_equal false, d.instance.add_newline
+    assert_equal true, d.instance.add_newline
     assert_equal 'TAB', d.instance.field_separator
   end
 
   def test_format
     d = create_driver
 
-    # time = Time.parse("2011-01-02 13:14:15 UTC").to_i
-    # d.emit({"a"=>1}, time)
-    # d.emit({"a"=>2}, time)
+    time = Time.parse("2011-11-25 13:14:15 UTC").to_i
+    d.emit({"a"=>1}, time)
+    d.emit({"a"=>2}, time)
 
-    # d.expect_format %[2011-01-02T13:14:15Z\ttest\t{"a":1}\n]
-    # d.expect_format %[2011-01-02T13:14:15Z\ttest\t{"a":2}\n]
+    d.expect_format %[2011-11-25T13:14:15Z\ttest\t{"a":1}\n]
+    d.expect_format %[2011-11-25T13:14:15Z\ttest\t{"a":2}\n]
 
-    # d.run
+    d.run
   end
 
   def test_write
@@ -137,68 +125,90 @@ class HoopOutputTest < Test::Unit::TestCase
               WEBrick::HTTPServer.new({:BindAddress => '127.0.0.1', :Port => 14000})
             end
       @fsdata = {}
-      srv.mount_proc('/'){|req,res|
-        # status only...
-        if req.query['user.name'] or req.cookies.index{|item| item.name == 'alfredo.auth' and item.value}
-          res.status = 200
-          res.content_type = CONTENT_TYPE_JSON
-          res.cookies << RES_COOKIE_AUTH_SUCCESS
-          res.body = RES_BODY_STATUS_ROOT
-        else
-          res.cookies << RES_COOKIE_AUTH_FAILURE
-          res.status = 401
-        end
-      }
-      srv.mount_proc('/logs/from/fluentd') {|req, res|
-        if req.request_method == 'POST' or req.request_method == 'PUT' or req.request_method == 'DELETE'
-          # WEBrick's default handler ignores query parameter of URI without method GET
-          req.query.update(Hash[*(req.request_line.split(' ')[1].split('?')[1].split('&').map{|kv|kv.split('=')}.flatten)])
-        end
-        case
-        when (not req.query['user.name'] and req.cookies.index{|item| item.name == 'alfredo.auth' and item.value} < 0)
-          res.cookies << RES_COOKIE_AUTH_FAILURE
-          res.status = 401
-        when (req.query['op'] == 'create' and @fsdata[req.path] and req.query['overwrite'] and req.query['overwrite'] == 'false')
-          res.status = 500
-          res.content_type = CONTENT_TYPE_JSON
-          res.cookies << RES_COOKIE_AUTH_SUCCESS
-          res.body = sprintf RES_FORMAT_ALREADY_EXISTS, req.path
-        when req.query['op'] == 'create'
-          @fsdata[req.path] = req.body
-          res.status = 201
-          res['Location'] = 'http://localhost:14000' + req.path
-          res.content_type = CONTENT_TYPE_JSON
-          res.cookies << RES_COOKIE_AUTH_SUCCESS
-        when (req.query['op'] == 'append' and @fsdata[req.path])
-          @fsdata[req.path] += req.body
-          res.status = 200
-          res['Location'] = 'http://localhost:14000' + req.path
-          res.content_type = CONTENT_TYPE_JSON
-          res.cookies << RES_COOKIE_AUTH_SUCCESS
-        when req.query['op'] == 'append'
-          res.status = 404
-          res.content_type = CONTENT_TYPE_JSON
-          res.cookies << RES_COOKIE_AUTH_SUCCESS
-          res.body = sprintf RES_FORMAT_NOT_FOUND, req.path
-        when (req.request_method == 'GET' and @fsdata[req.path]) # maybe GET
-          res.status = 200
-          res.content_type = 'application/octet-stream'
-          res.cookies << RES_COOKIE_AUTH_SUCCESS
-          res.body = @fsdata[req.path]
-        else
-          res.status = 404
-          res.content_type = CONTENT_TYPE_JSON
-          res.cookies << RES_COOKIE_AUTH_SUCCESS
-          res.body = sprintf RES_FORMAT_NOT_FOUND_GET, req.path
-        end
-      }
       begin
+        srv.mount_proc('/'){|req,res|
+          # status only...
+          if req.query['user.name'] or req.cookies.index{|item| item.name == 'alfredo.auth' and item.value}
+            res.status = 200
+            res.content_type = CONTENT_TYPE_JSON
+            res.cookies << RES_COOKIE_AUTH_SUCCESS
+            res.body = RES_BODY_STATUS_ROOT
+          else
+            res.cookies << RES_COOKIE_AUTH_FAILURE
+            res.status = 401
+          end
+        }
+        srv.mount_proc('/logs/from/fluentd') {|req, res|
+          if req.request_method == 'POST' or req.request_method == 'PUT' or req.request_method == 'DELETE'
+            # WEBrick's default handler ignores query parameter of URI without method GET
+            req.query.update(Hash[*(req.request_line.split(' ')[1].split('?')[1].split('&').map{|kv|kv.split('=')}.flatten)])
+          end
+          case
+          when (not req.query['user.name'] and req.cookies.index{|item| item.name == 'alfredo.auth' and item.value} < 0)
+            res.cookies << RES_COOKIE_AUTH_FAILURE
+            res.status = 401
+          when (req.query['op'] == 'create' and @fsdata[req.path] and req.query['overwrite'] and req.query['overwrite'] == 'false')
+            res.status = 500
+            res.content_type = CONTENT_TYPE_JSON
+            res.cookies << RES_COOKIE_AUTH_SUCCESS
+            res.body = sprintf RES_FORMAT_ALREADY_EXISTS, req.path
+          when req.query['op'] == 'create'
+            @fsdata[req.path] = req.body
+            res.status = 201
+            res['Location'] = 'http://localhost:14000' + req.path
+            res.content_type = CONTENT_TYPE_JSON
+            res.cookies << RES_COOKIE_AUTH_SUCCESS
+          when (req.query['op'] == 'append' and @fsdata[req.path])
+            @fsdata[req.path] += req.body
+            res.status = 200
+            res['Location'] = 'http://localhost:14000' + req.path
+            res.content_type = CONTENT_TYPE_JSON
+            res.cookies << RES_COOKIE_AUTH_SUCCESS
+          when req.query['op'] == 'append'
+            res.status = 404
+            res.content_type = CONTENT_TYPE_JSON
+            res.cookies << RES_COOKIE_AUTH_SUCCESS
+            res.body = sprintf RES_FORMAT_NOT_FOUND, req.path
+          when (req.request_method == 'GET' and @fsdata[req.path]) # maybe GET
+            res.status = 200
+            res.content_type = 'application/octet-stream'
+            res.cookies << RES_COOKIE_AUTH_SUCCESS
+            res.body = @fsdata[req.path]
+          else
+            res.status = 404
+            res.content_type = CONTENT_TYPE_JSON
+            res.cookies << RES_COOKIE_AUTH_SUCCESS
+            res.body = sprintf RES_FORMAT_NOT_FOUND_GET, req.path
+          end
+        }
         srv.start
       ensure
         srv.shutdown
       end
     end
-    Thread.pass
+
+    # to wait completion of dummy server.start()
+    require 'thread'
+    cv = ConditionVariable.new
+    watcher = Thread.new {
+      connected = false
+      while not connected
+        begin
+          get_content('localhost', 14000, '/', {'Cookie' => VALID_COOKIE_STRING})
+          connected = true
+        rescue Errno::ECONNREFUSED
+          sleep 0.1
+        rescue StandardError => e
+          p e
+          sleep 0.1
+        end
+      end
+      cv.signal
+    }
+    mutex = Mutex.new
+    mutex.synchronize {
+      cv.wait(mutex)
+    }
   end
 
   def test_dummy_server
