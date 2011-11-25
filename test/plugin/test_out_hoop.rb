@@ -5,12 +5,12 @@ class HoopOutputTest < Test::Unit::TestCase
 
   CONFIG = %[
     hoop_server localhost:14000
-    path /logs/from/fluentd/foo-%Y%m%d%H
+    path /logs/from/fluentd/foo-%Y%m%d
     username hoopuser
   ]
 
   def create_driver(conf = CONFIG)
-    Fluent::Test::BufferedOutputTestDriver.new(Fluent::HoopOutput).configure(conf)
+    Fluent::Test::TimeSlicedOutputTestDriver.new(Fluent::HoopOutput).configure(conf)
   end
 
   def test_configure
@@ -58,20 +58,77 @@ class HoopOutputTest < Test::Unit::TestCase
       ]
     }
 
+    # config_param :path, :string          # /path/pattern/to/hdfs/file can use %Y %m %d %H %M %S and %T(tag, not-supported-yet)
+
     d = create_driver(CONFIG)
     
+    assert_equal '%Y%m%d', d.instance.time_slice_format
+
     assert_equal 'localhost:14000', d.instance.hoop_server
-    assert_equal '/logs/from/fluentd/foo-%Y%m%d%H', d.instance.path
+    assert_equal '/logs/from/fluentd/foo-%Y%m%d', d.instance.path
     assert_equal 'hoopuser', d.instance.username
 
-    assert_nil d.instance.time_format
-
     assert_equal true, d.instance.output_time
-    assert_nil d.instance.time_format
     assert_equal true, d.instance.output_tag
     assert_equal 'json', d.instance.output_type
     assert_equal true, d.instance.add_newline
     assert_equal 'TAB', d.instance.field_separator
+  end
+
+  def test_configure_path_and_slice_format
+    d = create_driver(CONFIG)
+    assert_equal '%Y%m%d', d.instance.time_slice_format
+    assert_equal '/logs/from/fluentd/foo-%Y%m%d', d.instance.path
+    assert_equal '/logs/from/fluentd/foo-20111125', d.instance.path_format('20111125')
+
+    d = create_driver CONFIG + %[
+path /logs/from/fluentd/foo-%Y%m
+    ]
+    assert_equal '%Y%m%d', d.instance.time_slice_format
+    assert_equal '/logs/from/fluentd/foo-%Y%m', d.instance.path
+    assert_equal '/logs/from/fluentd/foo-201111', d.instance.path_format('20111125')
+
+    d = create_driver CONFIG + %[
+path /logs/from/fluentd/foo-%Y%m%d%H
+    ]
+    assert_equal '%Y%m%d%H', d.instance.time_slice_format
+    assert_equal '/logs/from/fluentd/foo-%Y%m%d%H', d.instance.path
+    assert_equal '/logs/from/fluentd/foo-2011112508', d.instance.path_format('2011112508')
+
+    d = create_driver CONFIG + %[
+path /logs/from/fluentd/foo-%Y%m%d%H%M
+    ]
+    assert_equal '%Y%m%d%H%M', d.instance.time_slice_format
+    assert_equal '/logs/from/fluentd/foo-%Y%m%d%H%M', d.instance.path
+    assert_equal '/logs/from/fluentd/foo-201111250811', d.instance.path_format('201111250811')
+
+    d = create_driver CONFIG + %[
+path /logs/from/fluentd/foo-%Y%m%d%H%M%S
+    ]
+    assert_equal '%Y%m%d%H%M%S', d.instance.time_slice_format
+    assert_equal '/logs/from/fluentd/foo-%Y%m%d%H%M%S', d.instance.path
+    assert_equal '/logs/from/fluentd/foo-20111125081159', d.instance.path_format('20111125081159')
+
+    d = create_driver CONFIG + %[
+path /logs/from/fluentd/foo-%m%d%H
+    ]
+    assert_equal '%Y%m%d%H', d.instance.time_slice_format
+    assert_equal '/logs/from/fluentd/foo-%m%d%H', d.instance.path
+    assert_equal '/logs/from/fluentd/foo-112508', d.instance.path_format('2011112508')
+
+    d = create_driver CONFIG + %[
+path /logs/from/fluentd/foo-%M%S.log
+    ]
+    assert_equal '%Y%m%d%H%M%S', d.instance.time_slice_format
+    assert_equal '/logs/from/fluentd/foo-%M%S.log', d.instance.path
+    assert_equal '/logs/from/fluentd/foo-1159.log', d.instance.path_format('20111125081159')
+
+    d = create_driver CONFIG + %[
+path /logs/from/fluentd/%Y%m%d/%H/foo-%M-%S.log
+    ]
+    assert_equal '%Y%m%d%H%M%S', d.instance.time_slice_format
+    assert_equal '/logs/from/fluentd/%Y%m%d/%H/foo-%M-%S.log', d.instance.path
+    assert_equal '/logs/from/fluentd/20111125/08/foo-11-59.log', d.instance.path_format('20111125081159')
   end
 
   def test_format
@@ -168,19 +225,14 @@ add_newline false
   def test_write
     d = create_driver
 
-    # time = Time.parse("2011-01-02 13:14:15 UTC").to_i
-    # d.emit({"a"=>1}, time)
-    # d.emit({"a"=>2}, time)
+    assert_equal '404', get_code('localhost', 14000, '/logs/from/fluentd/foo-20111124', {'Cookie' => VALID_COOKIE_STRING})
 
-    # ### FileOutput#write returns path
-    # path = d.run
-    # expect_path = "#{TMP_DIR}/out_file_test._0.log.gz"
-    # assert_equal expect_path, path
-
-    # data = Zlib::GzipReader.open(expect_path) {|f| f.read }
-    # assert_equal %[2011-01-02T13:14:15Z\ttest\t{"a":1}\n] +
-    #                 %[2011-01-02T13:14:15Z\ttest\t{"a":2}\n],
-    #              data
+    time = Time.parse("2011-11-24 00:14:15 UTC").to_i
+    d.emit({"a"=>1}, time)
+    d.emit({"a"=>2}, time)
+    paths = d.run
+    assert_equal ['/logs/from/fluentd/foo-20111124'], paths
+    assert_equal %[2011-11-24T00:14:15Z\ttest\t{"a":1}\n2011-11-24T00:14:15Z\ttest\t{"a":2}\n], get_content('localhost', 14000, paths.first, {'Cookie' => VALID_COOKIE_STRING})
   end
 
   VALID_COOKIE_STRING = 'alfredo.auth="u=hoopuser&p=hoopuser&t=simple&e=1322203001386&s=SErpv88rOAVEItSOIoCtIV/DSpE="'
