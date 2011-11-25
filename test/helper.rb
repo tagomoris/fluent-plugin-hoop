@@ -40,6 +40,7 @@ module WEBrick::HTTPServlet
 end
 
 def get_content(server, port, path, headers)
+  require 'net/http'
   Net::HTTP.start(server, port){|http|
     http.get(path, headers).body
   }
