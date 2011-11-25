@@ -27,6 +27,9 @@ Jeweler::RubygemsDotOrgTasks.new
 
 require 'rake/testtask'
 Rake::TestTask.new(:test) do |test|
+  unless ENV['DEBUG']
+    ENV['FLUENT_TEST_DEBUG'] = 'TRUE'
+  end
   test.libs << 'lib' << 'test'
   test.pattern = 'test/**/test_*.rb'
   test.verbose = true
