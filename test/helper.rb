@@ -34,8 +34,13 @@ require 'webrick'
 # to handle PUT/DELETE ...
 module WEBrick::HTTPServlet
   class ProcHandler < AbstractServlet
-    alias do_POST   do_GET
     alias do_PUT    do_GET
     alias do_DELETE do_GET
   end
+end
+
+def get_content(server, port, path, headers)
+  Net::HTTP.start(server, port){|http|
+    http.get(path, headers).body
+  }
 end

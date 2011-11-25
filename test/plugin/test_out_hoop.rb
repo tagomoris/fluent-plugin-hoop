@@ -228,6 +228,7 @@ class HoopOutputTest < Test::Unit::TestCase
     assert_equal path2_line1, client.request_get(path2, authheader).body
     assert_equal '200', client.request_put(path2 + '?op=append', path2_line2, authheader).code
     assert_equal path2_line1 + path2_line2, client.request_get(path2, authheader).body
+    assert_equal path2_line1 + path2_line2, get_content('localhost', 14000, path2, authheader)
   end
 
   def teardown
