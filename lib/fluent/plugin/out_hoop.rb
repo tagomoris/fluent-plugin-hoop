@@ -58,10 +58,10 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
       @custom_attributes = $1.split(',')
       if @custom_attributes.size > 1
         self.instance_eval {
-          def record_to_string(record); @custom_attributes.map{|attr| record[attr]}.join($f_separator); end
+          def record_to_string(record); @custom_attributes.map{|attr| (record[attr] || '(NONE)').to_s}.join(@f_separator); end
         }
       elsif @custom_attributes.size == 1
-        self.instance_eval { def record_to_string(record); record[@custom_attributes[0]]; end }
+        self.instance_eval { def record_to_string(record); (record[@custom_attributes[0]] || '(NONE)').to_s; end }
       else
         raise Fluent::ConfigError, "Invalid attributes specification: '#{@output_type}', needs one or more attributes."
       end
@@ -73,26 +73,26 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
       # default format method
     elsif @output_time
       self.instance_eval {
-        def format(time,tag,record);
+        def format(tag,time,record);
           time_str = @timef.format(time) ; time_str + @f_separator + record_to_string(record) + @line_end
         end
       }
     elsif @output_tag
       self.instance_eval {
-        def format(time,tag,record);
+        def format(tag,time,record);
           tag + @f_separator + record_to_string(record) + @line_end
         end
       }
     else
       if @add_newline
         self.instance_eval {
-          def format(time,tag,record);
+          def format(tag,time,record);
             record_to_string(record) + @line_end
           end
         }
       else
         self.instance_eval {
-          def format(time,tag,record);
+          def format(tag,time,record);
             record_to_string(record)
           end
         }
@@ -137,7 +137,7 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
 
   def format(tag, time, record)
     time_str = @timef.format(time)
-    time_str + @f_separator + tag + @f_separator + record_to_string(record) + (@add_newline ? "\n" : '')
+    time_str + @f_separator + tag + @f_separator + record_to_string(record) + @line_end
   end
 
   def write(chunk)

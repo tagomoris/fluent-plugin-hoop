@@ -76,14 +76,92 @@ class HoopOutputTest < Test::Unit::TestCase
 
   def test_format
     d = create_driver
-
     time = Time.parse("2011-11-25 13:14:15 UTC").to_i
     d.emit({"a"=>1}, time)
     d.emit({"a"=>2}, time)
-
     d.expect_format %[2011-11-25T13:14:15Z\ttest\t{"a":1}\n]
     d.expect_format %[2011-11-25T13:14:15Z\ttest\t{"a":2}\n]
+    d.run
 
+    d = create_driver CONFIG + %[
+output_tag false
+    ]
+    time = Time.parse("2011-11-25 13:14:15 UTC").to_i
+    d.emit({"a"=>1}, time)
+    d.emit({"a"=>2}, time)
+    d.expect_format %[2011-11-25T13:14:15Z\t{"a":1}\n]
+    d.expect_format %[2011-11-25T13:14:15Z\t{"a":2}\n]
+    d.run
+
+    d = create_driver CONFIG + %[
+output_time false
+    ]
+    time = Time.parse("2011-11-25 13:14:15 UTC").to_i
+    d.emit({"a"=>1}, time)
+    d.emit({"a"=>2}, time)
+    d.expect_format %[test\t{"a":1}\n]
+    d.expect_format %[test\t{"a":2}\n]
+    d.run
+
+    d = create_driver CONFIG + %[
+output_time false
+output_tag false
+    ]
+    time = Time.parse("2011-11-25 13:14:15 UTC").to_i
+    d.emit({"a"=>1}, time)
+    d.emit({"a"=>2}, time)
+    d.expect_format %[{"a":1}\n]
+    d.expect_format %[{"a":2}\n]
+    d.run
+
+    d = create_driver CONFIG + %[
+output_time false
+output_tag false
+output_type attr:a
+add_newline true # default
+    ]
+    time = Time.parse("2011-11-25 13:14:15 UTC").to_i
+    d.emit({"a"=>1}, time)
+    d.emit({"a"=>2}, time)
+    d.expect_format %[1\n]
+    d.expect_format %[2\n]
+    d.run
+
+    d = create_driver CONFIG + %[
+output_time false
+output_tag false
+output_type attr:a
+add_newline false
+    ]
+    time = Time.parse("2011-11-25 13:14:15 UTC").to_i
+    d.emit({"a"=>1}, time)
+    d.emit({"a"=>2}, time)
+    d.expect_format %[1]
+    d.expect_format %[2]
+    d.run
+
+    d = create_driver CONFIG + %[
+output_time false
+output_tag false
+output_type attr:a,b,c
+add_newline true
+    ]
+    time = Time.parse("2011-11-25 13:14:15 UTC").to_i
+    d.emit({"a"=>1}, time)
+    d.emit({"a"=>2,"c"=>6,"b"=>4}, time)
+    d.expect_format %[1\t(NONE)\t(NONE)\n]
+    d.expect_format %[2\t4\t6\n]
+    d.run
+
+    d = create_driver CONFIG + %[
+output_time false
+output_tag false
+output_type attr:message
+add_newline false
+    ]
+    time = Time.parse("2011-11-25 13:14:15 UTC").to_i
+    d.emit({"tag"=>"from.scribe", "message"=>'127.0.0.1 - tagomoris [25/Nov/2011:20:19:04 +0900] "GET http://example.com/api/ HTTP/1.1" 200 39 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/15.0.874.121 Safari/535.2" "-" 71383"' + "\n"}, time)
+    d.expect_format '127.0.0.1 - tagomoris [25/Nov/2011:20:19:04 +0900] "GET http://example.com/api/ HTTP/1.1" 200 39 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/15.0.874.121 Safari/535.2" "-" 71383"' + "\n"
     d.run
   end
 
