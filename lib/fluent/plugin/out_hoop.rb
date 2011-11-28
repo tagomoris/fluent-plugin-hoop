@@ -1,8 +1,133 @@
+module PlainTextFormatterMixin
+  # config_param :output_data_type, :string, :default => 'json' # or 'attr:field' or 'attr:field1,field2,field3(...)'
+
+  attr_accessor :output_include_time, :output_include_tag, :output_data_type
+  attr_accessor :add_newline, :field_separator
+  
+  def configure(conf)
+    super
+
+    @output_include_time ||= true
+    @output_include_tag ||= true
+    @output_data_type ||= 'json'
+
+    @field_separator = case @field_separator
+                       when 'SPACE' then ' '
+                       when 'COMMA' then ','
+                       else "\t"
+                       end
+    @add_newline = Config.bool_value(@add_newline)
+
+    if (not @localtime) and @utc
+      @localtime = false
+    end
+    # mix-in default time formatter (or you can overwrite @timef on your own configure)
+    @timef = @output_include_time ? Fluent::TimeFormatter.new(@time_format, @localtime) : nil
+
+    @custom_attributes = []
+    if @output_data_type == 'json'
+      self.instance_eval {
+        def stringify_record(record)
+          record.to_json
+        end
+      }
+    elsif @output_data_type =~ /^attr:(.*)$/
+      @custom_attributes = $1.split(',')
+      if @custom_attributes.size > 1
+        self.instance_eval {
+          def stringify_record(record)
+            @custom_attributes.map{|attr| (record[attr] || 'NULL').to_s}.join(@field_separator)
+          end
+        }
+      elsif @custom_attributes.size == 1
+        self.instance_eval {
+          def stringify_record(record)
+            (record[@custom_attributes[0]] || 'NULL').to_s
+          end
+        }
+      else
+        raise Fluent::ConfigError, "Invalid attributes specification: '#{@output_data_type}', needs one or more attributes."
+      end
+    else
+      raise Fluent::ConfigError, "Invalid output_data_type: '#{@output_data_type}'. specify 'json' or 'attr:ATTRIBUTE_NAME' or 'attr:ATTR1,ATTR2,...'"
+    end
+
+    if @output_include_time and @output_include_tag
+      if @add_newline
+        self.instance_eval {
+          def format(tag,time,record)
+            @timef.format(time) + @field_separator + tag + @field_separator + stringify_record(record) + "\n"
+          end
+        }
+      else
+        self.instance_eval {
+          def format(tag,time,record)
+            @timef.format(time) + @field_separator + tag + @field_separator + stringify_record(record)
+          end
+        }
+      end
+    elsif @output_include_time
+      if @add_newline
+        self.instance_eval {
+          def format(tag,time,record);
+            @timef.format(time) + @field_separator + stringify_record(record) + "\n"
+          end
+        }
+      else
+        self.instance_eval {
+          def format(tag,time,record);
+            @timef.format(time) + @field_separator + stringify_record(record)
+          end
+        }
+      end
+    elsif @output_include_tag
+      if @add_newline
+        self.instance_eval {
+          def format(tag,time,record);
+            tag + @field_separator + stringify_record(record) + "\n"
+          end
+        }
+      else
+        self.instance_eval {
+          def format(tag,time,record);
+            tag + @field_separator + stringify_record(record)
+          end
+        }
+      end
+    else # without time, tag
+      if @add_newline
+        self.instance_eval {
+          def format(tag,time,record);
+            stringify_record(record) + "\n"
+          end
+        }
+      else
+        self.instance_eval {
+          def format(tag,time,record);
+            stringify_record(record)
+          end
+        }
+      end
+    end
+  end
+
+  def stringify_record(record)
+    record.to_json
+  end
+
+  def format(tag, time, record)
+    time_str = @timef.format(time)
+    time_str + @field_separator + tag + @field_separator + stringify_record(record) + "\n"
+  end
+
+end
+
 class Fluent::HoopOutput < Fluent::TimeSlicedOutput
   Fluent::Plugin.register_output('hoop', self)
 
   config_set_default :buffer_type, 'memory'
   config_set_default :time_slice_format, '%Y%m%d' # %Y%m%d%H
+  # config_param :tag_format, :string, :default => 'all' # or 'last'(last.part.of.tag => tag) or 'none'
 
   config_param :hoop_server, :string   # host:port
   config_param :path, :string          # /path/pattern/to/hdfs/file can use %Y %m %d %H %M %S and %T(tag, not-supported-yet)
@@ -11,12 +136,12 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
   config_set_default :utc, true
   config_set_default :localtime, false
 
-  config_param :output_time, :bool, :default => true
-  config_param :output_tag, :bool, :default => true
-  config_param :output_type, :string, :default => 'json' # or 'attr:field' or 'attr:field1,field2,field3(...)'
-  config_param :add_newline, :bool,   :default => true
-  config_param :field_separator, :string, :default => 'TAB' # or SPACE,COMMA (for output_type=attributes:*)
-  # config_param :tag_format, :string, :default => 'all' # or 'last'(last.part.of.tag => tag) or 'none'
+  # config_param :output_time, :bool, :default => true
+  # config_param :output_tag, :bool, :default => true
+  # config_param :output_type, :string, :default => 'json' # or 'attr:field' or 'attr:field1,field2,field3(...)'
+  # config_param :add_newline, :bool,   :default => true
+  # config_param :field_separator, :string, :default => 'TAB' # or SPACE,COMMA (for output_type=attributes:*)
+  include PlainTextFormatterMixin
 
   def initialize
     super
