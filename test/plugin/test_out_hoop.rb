@@ -68,11 +68,27 @@ class HoopOutputTest < Test::Unit::TestCase
     assert_equal '/logs/from/fluentd/foo-%Y%m%d', d.instance.path
     assert_equal 'hoopuser', d.instance.username
 
-    assert_equal true, d.instance.output_time
-    assert_equal true, d.instance.output_tag
-    assert_equal 'json', d.instance.output_type
+    assert_equal true, d.instance.output_include_time
+    assert_equal true, d.instance.output_include_tag
+    assert_equal 'json', d.instance.output_data_type
     assert_equal true, d.instance.add_newline
-    assert_equal 'TAB', d.instance.field_separator
+    assert_equal "\t", d.instance.field_separator
+
+    d = create_driver(CONFIG + %[
+      add_newline false
+    ])
+    
+    assert_equal '%Y%m%d', d.instance.time_slice_format
+
+    assert_equal 'localhost:14000', d.instance.hoop_server
+    assert_equal '/logs/from/fluentd/foo-%Y%m%d', d.instance.path
+    assert_equal 'hoopuser', d.instance.username
+
+    assert_equal true, d.instance.output_include_time
+    assert_equal true, d.instance.output_include_tag
+    assert_equal 'json', d.instance.output_data_type
+    assert_equal false, d.instance.add_newline
+    assert_equal "\t", d.instance.field_separator
   end
 
   def test_configure_path_and_slice_format
@@ -141,7 +157,7 @@ path /logs/from/fluentd/%Y%m%d/%H/foo-%M-%S.log
     d.run
 
     d = create_driver CONFIG + %[
-output_tag false
+output_include_tag false
     ]
     time = Time.parse("2011-11-25 13:14:15 UTC").to_i
     d.emit({"a"=>1}, time)
@@ -151,7 +167,7 @@ output_tag false
     d.run
 
     d = create_driver CONFIG + %[
-output_time false
+output_include_time false
     ]
     time = Time.parse("2011-11-25 13:14:15 UTC").to_i
     d.emit({"a"=>1}, time)
@@ -161,8 +177,8 @@ output_time false
     d.run
 
     d = create_driver CONFIG + %[
-output_time false
-output_tag false
+output_include_time false
+output_include_tag false
     ]
     time = Time.parse("2011-11-25 13:14:15 UTC").to_i
     d.emit({"a"=>1}, time)
@@ -172,9 +188,9 @@ output_tag false
     d.run
 
     d = create_driver CONFIG + %[
-output_time false
-output_tag false
-output_type attr:a
+output_include_time false
+output_include_tag false
+output_data_type attr:a
 add_newline true # default
     ]
     time = Time.parse("2011-11-25 13:14:15 UTC").to_i
@@ -185,9 +201,9 @@ add_newline true # default
     d.run
 
     d = create_driver CONFIG + %[
-output_time false
-output_tag false
-output_type attr:a
+output_include_time false
+output_include_tag false
+output_data_type attr:a
 add_newline false
     ]
     time = Time.parse("2011-11-25 13:14:15 UTC").to_i
@@ -198,9 +214,9 @@ add_newline false
     d.run
 
     d = create_driver CONFIG + %[
-output_time false
-output_tag false
-output_type attr:a,b,c
+output_include_time false
+output_include_tag false
+output_data_type attr:a,b,c
 add_newline true
     ]
     time = Time.parse("2011-11-25 13:14:15 UTC").to_i
@@ -211,9 +227,9 @@ add_newline true
     d.run
 
     d = create_driver CONFIG + %[
-output_time false
-output_tag false
-output_type attr:message
+output_include_time false
+output_include_tag false
+output_data_type attr:message
 add_newline false
     ]
     time = Time.parse("2011-11-25 13:14:15 UTC").to_i
@@ -223,7 +239,9 @@ add_newline false
   end
 
   def test_write
-    d = create_driver
+    d = create_driver CONFIG + %[
+    utc
+    ]
 
     assert_equal '404', get_code('localhost', 14000, '/logs/from/fluentd/foo-20111124', {'Cookie' => VALID_COOKIE_STRING})
 

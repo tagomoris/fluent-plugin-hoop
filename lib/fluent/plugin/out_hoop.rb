@@ -16,9 +16,17 @@ module PlainTextFormatterMixin
                        when 'COMMA' then ','
                        else "\t"
                        end
-    @add_newline = Config.bool_value(@add_newline)
+    @add_newline = Fluent::Config.bool_value(conf['add_newline'])
+    if @add_newline.nil?
+      @add_newline = true
+    end
 
-    if (not @localtime) and @utc
+    # default timezone: utc
+    if @localtime.nil? and @utc.nil?
+      @utc = true
+      @localtime = false
+    elsif not @localtime and not @utc
+      @utc = true
       @localtime = false
     end
     # mix-in default time formatter (or you can overwrite @timef on your own configure)
@@ -133,9 +141,6 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
   config_param :path, :string          # /path/pattern/to/hdfs/file can use %Y %m %d %H %M %S and %T(tag, not-supported-yet)
   config_param :username, :string      # hoop pseudo username
   
-  config_set_default :utc, true
-  config_set_default :localtime, false
-
   # config_param :output_time, :bool, :default => true
   # config_param :output_tag, :bool, :default => true
   # config_param :output_type, :string, :default => 'json' # or 'attr:field' or 'attr:field1,field2,field3(...)'
@@ -178,62 +183,6 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
                    when 'COMMA' then ','
                    else "\t"
                    end
-
-    if @utc
-      @localtime = false
-    end
-    @timef = @output_time ? Fluent::TimeFormatter.new(@time_format, @localtime) : nil
-
-    @line_end = @add_newline ? "\n" : ""
-
-    # config_param :output_type, :string, :default => 'json' # or 'attr:field' or 'attr:field1,field2,field3(...)'
-    @custom_attributes = []
-    if @output_type == 'json'
-      # default record_to_string
-    elsif @output_type =~ /^attr:(.*)$/
-      @custom_attributes = $1.split(',')
-      if @custom_attributes.size > 1
-        self.instance_eval {
-          def record_to_string(record); @custom_attributes.map{|attr| (record[attr] || '(NONE)').to_s}.join(@f_separator); end
-        }
-      elsif @custom_attributes.size == 1
-        self.instance_eval { def record_to_string(record); (record[@custom_attributes[0]] || '(NONE)').to_s; end }
-      else
-        raise Fluent::ConfigError, "Invalid attributes specification: '#{@output_type}', needs one or more attributes."
-      end
-    else
-      raise Fluent::ConfigError, "Invalid output_type: '#{@output_type}'. specify 'json' or 'attr:ATTRIBUTE_NAME' or 'attr:ATTR1,ATTR2,...'"
-    end
-
-    if @output_time and @output_tag
-      # default format method
-    elsif @output_time
-      self.instance_eval {
-        def format(tag,time,record);
-          time_str = @timef.format(time) ; time_str + @f_separator + record_to_string(record) + @line_end
-        end
-      }
-    elsif @output_tag
-      self.instance_eval {
-        def format(tag,time,record);
-          tag + @f_separator + record_to_string(record) + @line_end
-        end
-      }
-    else
-      if @add_newline
-        self.instance_eval {
-          def format(tag,time,record);
-            record_to_string(record) + @line_end
-          end
-        }
-      else
-        self.instance_eval {
-          def format(tag,time,record);
-            record_to_string(record)
-          end
-        }
-      end
-    end
   end
 
   def start
