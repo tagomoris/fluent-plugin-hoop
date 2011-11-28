@@ -1,4 +1,5 @@
-module PlainTextFormatterMixin
+module FluentExt; end
+module FluentExt::PlainTextFormatterMixin
   # config_param :output_data_type, :string, :default => 'json' # or 'attr:field' or 'attr:field1,field2,field3(...)'
 
   attr_accessor :output_include_time, :output_include_tag, :output_data_type
@@ -22,7 +23,7 @@ module PlainTextFormatterMixin
     end
 
     # default timezone: utc
-    if @localtime.nil? and @utc.nil?
+    if conf['localtime'].nil? and conf['utc'].nil?
       @utc = true
       @localtime = false
     elsif not @localtime and not @utc
@@ -141,12 +142,7 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
   config_param :path, :string          # /path/pattern/to/hdfs/file can use %Y %m %d %H %M %S and %T(tag, not-supported-yet)
   config_param :username, :string      # hoop pseudo username
   
-  # config_param :output_time, :bool, :default => true
-  # config_param :output_tag, :bool, :default => true
-  # config_param :output_type, :string, :default => 'json' # or 'attr:field' or 'attr:field1,field2,field3(...)'
-  # config_param :add_newline, :bool,   :default => true
-  # config_param :field_separator, :string, :default => 'TAB' # or SPACE,COMMA (for output_type=attributes:*)
-  include PlainTextFormatterMixin
+  include FluentExt::PlainTextFormatterMixin
 
   def initialize
     super
@@ -187,6 +183,8 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
 
   def start
     super
+
+    # okey, net/http has reconnect feature. see test_out_hoop_reconnect.rb
     @conn = Net::HTTP.start(@host, @port)
     begin
       res = @conn.request_get("/?op=status&user.name=#{@username}")
@@ -207,35 +205,12 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
     record.to_json
   end
 
-  # def format_fullspec(tag, time, record)
-  #   buf = ''
-  #   if @output_time
-  #     buf += @timef.format(time) + @f_separator
-  #   end
-  #   if @output_tag
-  #     buf += tag + @f_separator
-  #   end
-  #   if @output_type == 'json'
-  #     buf += record.json
-  #   else
-  #     buf += @custom_attributes.map{|attr| record[attr]}.join(@f_separator)
-  #   end
-  #   if @add_newline
-  #     buf += "\n"
-  #   end
-  #   buf
-  # end
-
   def format(tag, time, record)
     time_str = @timef.format(time)
     time_str + @f_separator + tag + @f_separator + record_to_string(record) + @line_end
   end
 
   def path_format(chunk_key)
-    # p({:time_slice_format => @time_slice_format, :path => @path, :chunk_key => chunk_key})
-    if chunk_key.length < 1
-      raise RuntimeError
-    end
     Time.strptime(chunk_key, @time_slice_format).strftime(@path)
   end
 
