@@ -221,6 +221,7 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
 
   def write(chunk)
     hdfs_path = path_format(chunk.key)
+    $log.debug "writing to hoop path: #{hdfs_path}"
     begin
       res = @conn.request_put(hdfs_path + "?op=append", chunk.read, @authorized_header)
       if res.code == '404'
