@@ -188,7 +188,12 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
     @conn = Net::HTTP.start(@host, @port)
     begin
       res = @conn.request_get("/?op=status&user.name=#{@username}")
-      @authorized_header = {'Cookie' => res['Set-Cookie'].split(';')[0], 'Content-Type' => 'application/octet-stream'}
+      if res.code.to_i < 300 and res['Set-Cookie']
+        @authorized_header = {'Cookie' => res['Set-Cookie'].split(';')[0], 'Content-Type' => 'application/octet-stream'}
+      else
+        $log.error "initalize request failed, code: #{res.code}, message: #{res.body}"
+        raise Fluent::ConfigError, "initalize request failed, code: #{res.code}, message: #{res.body}"
+      end
     rescue
       $log.error "failed to connect hoop server: #{@host} port #{@port}"
       raise
@@ -227,7 +232,9 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
       if res.code != '200' and res.code != '201'
         $log.warn "failed to write data to path: #{hdfs_path}, code: #{res.code} #{res.message}"
       else
-        @authorized_header['Cookie'] = res['Set-Cookie'].split(';')[0]
+        if res['Set-Cookie']
+          @authorized_header['Cookie'] = (res['Set-Cookie'] || '').split(';')[0]
+        end
       end
     rescue
       $log.error "failed to communicate server, #{@host} port #{@port}, path: #{hdfs_path}"
