@@ -143,15 +143,10 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
   config_param :username, :string      # hoop pseudo username
   
   include FluentExt::PlainTextFormatterMixin
-  config_param :output_include_time, :bool
   config_set_default :output_include_time, true
-  config_param :output_include_tag, :bool
   config_set_default :output_include_tag, true
-  config_param :output_data_type, :string
   config_set_default :output_data_type, 'json'
-  config_param :field_separator, :string
   config_set_default :field_separator, 'TAB'
-  config_param :add_newline, :bool
   config_set_default :add_newline, true
 
   def initialize
@@ -214,7 +209,6 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
 
   def shutdown
     super
-    # @conn.finish
   end
 
   def record_to_string(record)
