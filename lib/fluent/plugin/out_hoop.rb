@@ -208,12 +208,13 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
       $log.error "failed to connect hoop server: #{@host} port #{@port}"
       raise
     end
+    @conn.finish
     $log.info "connected hoop server: #{@host} port #{@port}"
   end
 
   def shutdown
     super
-    @conn.finish
+    # @conn.finish
   end
 
   def record_to_string(record)
@@ -231,6 +232,7 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
 
   def write(chunk)
     hdfs_path = path_format(chunk.key)
+    @conn = Net::HTTP.start(@host, @port)
     begin
       res = @conn.request_put(hdfs_path + "?op=append", chunk.read, @authorized_header)
       if res.code == '404'
@@ -250,6 +252,7 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
       $log.error "failed to communicate server, #{@host} port #{@port}, path: #{hdfs_path}"
       raise
     end
+    @conn.finish
     hdfs_path
   end
 end
