@@ -8,9 +8,14 @@ module FluentExt::PlainTextFormatterMixin
   def configure(conf)
     super
 
-    @output_include_time ||= true
-    @output_include_tag ||= true
-    @output_data_type ||= 'json'
+    @output_include_time = Fluent::Config.bool_value(conf['output_include_time'])
+    @output_include_time = true if @output_include_time.nil?
+
+    @output_include_tag = Fluent::Config.bool_value(conf['output_include_tag'])
+    @output_include_tag = true if @output_include_tag.nil?
+
+    @output_data_type = conf['output_data_type']
+    @output_data_type = 'json' if @output_data_type.nil?
 
     @field_separator = case @field_separator
                        when 'SPACE' then ' '
@@ -146,7 +151,7 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
   config_set_default :output_include_time, true
   config_set_default :output_include_tag, true
   config_set_default :output_data_type, 'json'
-  config_set_default :field_separator, 'TAB'
+  config_set_default :field_separator, "\t"
   config_set_default :add_newline, true
 
   def initialize
