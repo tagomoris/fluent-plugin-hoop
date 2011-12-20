@@ -151,6 +151,8 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
   config_set_default :output_data_type, 'json'
   config_param :field_separator, :string
   config_set_default :field_separator, 'TAB'
+  config_param :add_newline, :bool
+  config_set_default :add_newline, true
 
   def initialize
     super
