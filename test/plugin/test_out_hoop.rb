@@ -9,8 +9,8 @@ class HoopOutputTest < Test::Unit::TestCase
     username hoopuser
   ]
 
-  def create_driver(conf = CONFIG)
-    Fluent::Test::TimeSlicedOutputTestDriver.new(Fluent::HoopOutput).configure(conf)
+  def create_driver(conf=CONFIG, tag='test')
+    Fluent::Test::TimeSlicedOutputTestDriver.new(Fluent::HoopOutput, tag).configure(conf)
   end
 
   def test_configure
@@ -57,6 +57,14 @@ class HoopOutputTest < Test::Unit::TestCase
     username hoopuser
       ]
     }
+    assert_raise(Fluent::ConfigError) {
+      d = create_driver %[
+    hoop_server hoop.master.local:14000
+    path /logs/from/fluentd/access.log.%Y%m%d
+    output_include_tag true
+    remove_prefix testing
+      ]
+    }
 
     # config_param :path, :string          # /path/pattern/to/hdfs/file can use %Y %m %d %H %M %S and %T(tag, not-supported-yet)
 
@@ -74,10 +82,15 @@ class HoopOutputTest < Test::Unit::TestCase
     assert_equal true, d.instance.add_newline
     assert_equal "\t", d.instance.field_separator
 
+    assert_nil d.instance.remove_prefix
+
     d = create_driver(CONFIG + %[
       add_newline false
-    ])
-    
+      remove_prefix testing
+      default_tag   unknown
+    ], 'testing.error')
+    assert_equal 'testing.error', d.tag
+
     assert_equal '%Y%m%d', d.instance.time_slice_format
 
     assert_equal 'localhost:14000', d.instance.hoop_server
@@ -89,6 +102,9 @@ class HoopOutputTest < Test::Unit::TestCase
     assert_equal 'json', d.instance.output_data_type
     assert_equal false, d.instance.add_newline
     assert_equal "\t", d.instance.field_separator
+
+    assert_equal 'testing', d.instance.remove_prefix
+    assert_equal 'unknown', d.instance.default_tag
   end
 
   def test_configure_path_and_slice_format
@@ -154,6 +170,40 @@ path /logs/from/fluentd/%Y%m%d/%H/foo-%M-%S.log
     d.emit({"a"=>2}, time)
     d.expect_format %[2011-11-25T13:14:15Z\ttest\t{"a":1}\n]
     d.expect_format %[2011-11-25T13:14:15Z\ttest\t{"a":2}\n]
+    d.run
+
+    d = create_driver(CONFIG + %[
+remove_prefix testing
+default_tag   unknown
+    ], 'testing.log')
+    assert_equal 'testing.log', d.tag
+    time = Time.parse("2011-11-25 13:14:15 UTC").to_i
+    d.emit({"a"=>1}, time)
+    d.emit({"a"=>2}, time)
+    d.expect_format %[2011-11-25T13:14:15Z\tlog\t{"a":1}\n]
+    d.expect_format %[2011-11-25T13:14:15Z\tlog\t{"a":2}\n]
+    d.run
+
+    d = create_driver(CONFIG + %[
+remove_prefix testing
+default_tag   unknown
+    ], 'extra.testing.log')
+    time = Time.parse("2011-11-25 13:14:15 UTC").to_i
+    d.emit({"a"=>1}, time)
+    d.emit({"a"=>2}, time)
+    d.expect_format %[2011-11-25T13:14:15Z\textra.testing.log\t{"a":1}\n]
+    d.expect_format %[2011-11-25T13:14:15Z\textra.testing.log\t{"a":2}\n]
+    d.run
+
+    d = create_driver(CONFIG + %[
+remove_prefix testing
+default_tag   unknown
+    ], 'testing')
+    time = Time.parse("2011-11-25 13:14:15 UTC").to_i
+    d.emit({"a"=>1}, time)
+    d.emit({"a"=>2}, time)
+    d.expect_format %[2011-11-25T13:14:15Z\tunknown\t{"a":1}\n]
+    d.expect_format %[2011-11-25T13:14:15Z\tunknown\t{"a":2}\n]
     d.run
 
     d = create_driver CONFIG + %[
@@ -222,7 +272,7 @@ add_newline true
     time = Time.parse("2011-11-25 13:14:15 UTC").to_i
     d.emit({"a"=>1}, time)
     d.emit({"a"=>2,"c"=>6,"b"=>4}, time)
-    d.expect_format %[1\t(NONE)\t(NONE)\n]
+    d.expect_format %[1\tNULL\tNULL\n]
     d.expect_format %[2\t4\t6\n]
     d.run
 
