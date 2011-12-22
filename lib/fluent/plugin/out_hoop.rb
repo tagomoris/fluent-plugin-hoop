@@ -261,9 +261,9 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
     super
 
     # okey, net/http has reconnect feature. see test_out_hoop_reconnect.rb
-    @conn = Net::HTTP.start(@host, @port)
+    conn = Net::HTTP.start(@host, @port)
     begin
-      res = @conn.request_get("/?op=status&user.name=#{@username}")
+      res = conn.request_get("/?op=status&user.name=#{@username}")
       if res.code.to_i < 300 and res['Set-Cookie']
         @authorized_header = {'Cookie' => res['Set-Cookie'].split(';')[0], 'Content-Type' => 'application/octet-stream'}
       else
@@ -274,7 +274,7 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
       $log.error "failed to connect hoop server: #{@host} port #{@port}"
       raise
     end
-    @conn.finish
+    conn.finish
     $log.info "connected hoop server: #{@host} port #{@port}"
   end
 
@@ -297,13 +297,23 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
 
   def write(chunk)
     hdfs_path = path_format(chunk.key)
-    @conn = Net::HTTP.start(@host, @port)
+    conn = Net::HTTP.start(@host, @port)
     begin
-      res = @conn.request_put(hdfs_path + "?op=append", chunk.read, @authorized_header)
+      res = conn.request_put(hdfs_path + "?op=append", chunk.read, @authorized_header)
+      if res.code == '401'
+        res = conn.request_get("/?op=status&user.name=#{@username}")
+        if res.code.to_i < 300 and res['Set-Cookie']
+          @authorized_header = {'Cookie' => res['Set-Cookie'].split(';')[0], 'Content-Type' => 'application/octet-stream'}
+        else
+          $log.error "Failed to update authorized cookie, code: #{res.code}, message: #{res.body}"
+          raise Fluent::ConfigError, "Failed to update authorized cookie, code: #{res.code}, message: #{res.body}"
+        end
+        res = conn.request_put(hdfs_path + "?op=append", chunk.read, @authorized_header)
+      end
       if res.code == '404'
-        res = @conn.request_post(hdfs_path + "?op=create&overwrite=false", chunk.read, @authorized_header)
+        res = conn.request_post(hdfs_path + "?op=create&overwrite=false", chunk.read, @authorized_header)
         if res.code == '500'
-          res = @conn.request_put(hdfs_path + "?op=append", chunk.read, @authorized_header)
+          res = conn.request_put(hdfs_path + "?op=append", chunk.read, @authorized_header)
         end
       end
       if res.code != '200' and res.code != '201'
@@ -317,7 +327,7 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
       $log.error "failed to communicate server, #{@host} port #{@port}, path: #{hdfs_path}"
       raise
     end
-    @conn.finish
+    conn.finish
     hdfs_path
   end
 end
