@@ -303,6 +303,7 @@ add_newline false
     assert_equal %[2011-11-24T00:14:15Z\ttest\t{"a":1}\n2011-11-24T00:14:15Z\ttest\t{"a":2}\n], get_content('localhost', 14000, paths.first, {'Cookie' => VALID_COOKIE_STRING})
   end
 
+  VALID_COOKIE_VALUE = 'u=hoopuser&p=hoopuser&t=simple&e=1322203001386&s=SErpv88rOAVEItSOIoCtIV/DSpE='
   VALID_COOKIE_STRING = 'alfredo.auth="u=hoopuser&p=hoopuser&t=simple&e=1322203001386&s=SErpv88rOAVEItSOIoCtIV/DSpE="'
   RES_COOKIE_AUTH_FAILURE = WEBrick::Cookie.parse_set_cookie('alfredo.auth=""; Expires=Thu, 01-Jan-1970 00:00:10 GMT; Path=/')
   RES_COOKIE_AUTH_SUCCESS = WEBrick::Cookie.parse_set_cookie(VALID_COOKIE_STRING + '; Version=1; Path=/')
@@ -342,40 +343,34 @@ add_newline false
             req.query.update(Hash[*(req.request_line.split(' ')[1].split('?')[1].split('&').map{|kv|kv.split('=')}.flatten)])
           end
           case
-          when (not req.query['user.name'] and req.cookies.index{|item| item.name == 'alfredo.auth' and item.value} < 0)
+          when (not req.query['user.name'] and req.cookies.index{|i| i.name == 'alfredo.auth' and i.value == VALID_COOKIE_VALUE} < 0)
             res.cookies << RES_COOKIE_AUTH_FAILURE
             res.status = 401
           when (req.query['op'] == 'create' and @fsdata[req.path] and req.query['overwrite'] and req.query['overwrite'] == 'false')
             res.status = 500
             res.content_type = CONTENT_TYPE_JSON
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
             res.body = sprintf RES_FORMAT_ALREADY_EXISTS, req.path
           when req.query['op'] == 'create'
             @fsdata[req.path] = req.body
             res.status = 201
             res['Location'] = 'http://localhost:14000' + req.path
             res.content_type = CONTENT_TYPE_JSON
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
           when (req.query['op'] == 'append' and @fsdata[req.path])
             @fsdata[req.path] += req.body
             res.status = 200
             res['Location'] = 'http://localhost:14000' + req.path
             res.content_type = CONTENT_TYPE_JSON
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
           when req.query['op'] == 'append'
             res.status = 404
             res.content_type = CONTENT_TYPE_JSON
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
             res.body = sprintf RES_FORMAT_NOT_FOUND, req.path
           when (req.request_method == 'GET' and @fsdata[req.path]) # maybe GET
             res.status = 200
             res.content_type = 'application/octet-stream'
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
             res.body = @fsdata[req.path]
           else
             res.status = 404
             res.content_type = CONTENT_TYPE_JSON
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
             res.body = sprintf RES_FORMAT_NOT_FOUND_GET, req.path
           end
         }

@@ -82,34 +82,28 @@ class HoopOutputReconnectTest < Test::Unit::TestCase
           when (req.query['op'] == 'create' and @fsdata[req.path] and req.query['overwrite'] and req.query['overwrite'] == 'false')
             res.status = 500
             res.content_type = CONTENT_TYPE_JSON
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
             res.body = sprintf RES_FORMAT_ALREADY_EXISTS, req.path
           when req.query['op'] == 'create'
             @fsdata[req.path] = req.body
             res.status = 201
             res['Location'] = 'http://localhost:14000' + req.path
             res.content_type = CONTENT_TYPE_JSON
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
           when (req.query['op'] == 'append' and @fsdata[req.path])
             @fsdata[req.path] += req.body
             res.status = 200
             res['Location'] = 'http://localhost:14000' + req.path
             res.content_type = CONTENT_TYPE_JSON
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
           when req.query['op'] == 'append'
             res.status = 404
             res.content_type = CONTENT_TYPE_JSON
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
             res.body = sprintf RES_FORMAT_NOT_FOUND, req.path
           when (req.request_method == 'GET' and @fsdata[req.path]) # maybe GET
             res.status = 200
             res.content_type = 'application/octet-stream'
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
             res.body = @fsdata[req.path]
           else
             res.status = 404
             res.content_type = CONTENT_TYPE_JSON
-            res.cookies << RES_COOKIE_AUTH_SUCCESS
             res.body = sprintf RES_FORMAT_NOT_FOUND_GET, req.path
           end
         }
