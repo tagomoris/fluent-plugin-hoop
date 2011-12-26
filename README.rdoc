@@ -1,19 +1,79 @@
-= fluent-plugin-hoop
+= Hoop plugin for Fluentd
 
-Description goes here.
+== Component
 
-== Contributing to fluent-plugin-hoop
- 
-* Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been fixed yet
-* Check out the issue tracker to make sure someone already hasn't requested it and/or contributed it
-* Fork the project
-* Start a feature/bugfix branch
-* Commit and push until you are happy with your contribution
-* Make sure to add tests for it. This is important so I don't break it in a future version unintentionally.
-* Please try not to mess with the Rakefile, version, or history. If you want to have your own version, or is otherwise necessary, that is fine, but please isolate to its own commit so I can cherry-pick around it.
+=== HoopOutput
+
+Store fluent-event as plain text to HDFS, over Hoop (HDFS http-fs).
+
+Hoop is originally written in Cloudera, and merged on Apache Hadoop 0.23 tree. See:
+
+[Apache Hadoop dev doc] https://github.com/apache/hadoop-common/blob/trunk/hadoop-hdfs-project/hadoop-hdfs-httpfs/src/site/apt/index.apt.vm
+[Cloudera Hoop doc (obsolete)] http://cloudera.github.com/hoop/docs/latest/index.html
+
+HoopOutput slices data by time (for specified units), and store these data as plain text on hdfs. You can specify to:
+
+- format whole data as serialized JSON, single attribute or separated multi attributes
+- include time as line header, or not
+- include tag as line header, or not
+- change field separator (default: TAB)
+
+== Configuration
+
+=== HoopOutput
+
+Minimal configuration (output: TAB separated time,tag,json-serialized-data and terminated with newline):
+
+    <match hoop.**>
+      type hoop
+      hoop_server hoop-server.local:14000
+    
+      # %Y %m %d %H %M %S are available as conversion specifications in path on hdfs
+      # If '%Y%m%d' specified, logs are sliced into per-day files automatically.
+      path /hoop/log-%Y%m/log-%Y%m%d.log
+    
+      # 'username' is used pseudo authentication, see http://cloudera.github.com/hoop/docs/latest/HttpRestApi.html
+      username hoopuser
+    </match>
+
+You will get output like below in hdfs file such as '/hoop/log-201112/log-20111231.log'
+
+    2011-12-31T13:14:15Z [TAB] hoop.foo.bar [TAB] {"field1":12345,"field2":"one two three four five","field3":"OK"} [terminated by newline]
+    2011-12-31T21:22:23Z [TAB] hoop.foo.val [TAB] {"field1":23456,"field2":"two three four five six","field3":"BAD"} [terminated by newline]
+
+Single attribute with tag (removed prefix 'hoop.'), without time, separated by SPACE and NOT to terminate by newline ('message' data will be terminated with newline).
+
+    <match hoop.**>
+      type hoop
+      hoop_server hoop-server.local:14000
+      path /hoop/log-%Y%m/log-%Y%m%d-%H.log
+      username hoopuser
+    
+      output_include_time false
+      output_include_tag true
+    
+      # If you want multiple attribute, specify like 'attr:field1,field2,field3'
+      output_data_type attr:message
+    
+      # field_separator allows 'SPACE', 'COMMA' and 'TAB'(default)
+      field_separator SPACE
+    
+      # add_newline 's default is true
+      add_newline false
+    
+      # tag 'hoop.foo.bar' is shrinked as 'foo.bar'
+      remove_prefix hoop
+    
+      # used for tags only remove_prefix string, like 'hoop'
+      default_tag unknown
+    </match>
+
+== TODO
+
+- consider what to do next
+- patches welcome!
 
 == Copyright
 
-Copyright (c) 2011 TAGOMORI Satoshi. See LICENSE.txt for
-further details.
-
+Copyright:: Copyright (c) 2011- TAGOMORI Satoshi (tagomoris)
+License::   Apache License, Version 2.0
