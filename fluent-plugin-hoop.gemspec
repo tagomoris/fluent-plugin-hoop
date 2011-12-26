@@ -26,6 +26,7 @@ Gem::Specification.new do |s|
     "README.rdoc",
     "Rakefile",
     "VERSION",
+    "fluent-plugin-hoop.gemspec",
     "lib/fluent/plugin/out_hoop.rb",
     "test/helper.rb",
     "test/plugin/test_out_hoop.rb",
