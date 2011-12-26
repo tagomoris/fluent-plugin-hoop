@@ -15,13 +15,21 @@ require 'jeweler'
 Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
   gem.name = "fluent-plugin-hoop"
+  gem.description = "Hoop (HDFS http-fs) plugin for Fluent event collector"
   gem.homepage = "http://github.com/tagomoris/fluent-plugin-hoop"
-  gem.license = "MIT"
-  gem.summary = %Q{TODO: one-line summary of your gem}
-  gem.description = %Q{TODO: longer description of your gem}
-  gem.email = "tagomoris@gmail.com"
+  gem.summary = gem.description
+  # gem.version = File.read("VERSION").strip
   gem.authors = ["TAGOMORI Satoshi"]
-  # dependencies defined in Gemfile
+  gem.email = "tagomoris@gmail.com"
+  gem.has_rdoc = false
+  # gem.license = "Apache License v2.0"
+  gem.files       = `git ls-files`.split("\n")
+  gem.test_files  = `git ls-files -- {test,spec,features}/*`.split("\n")
+  gem.executables = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
+  gem.require_paths = ['lib']
+  gem.add_dependency "fluentd", "~> 0.10.8"
+  gem.add_development_dependency "rake", ">= 0.9.2"
+  gem.add_development_dependency "simplecov", ">= 0.5.4"
 end
 Jeweler::RubygemsDotOrgTasks.new
 
