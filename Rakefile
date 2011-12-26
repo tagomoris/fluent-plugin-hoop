@@ -16,7 +16,7 @@ Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
   gem.name = "fluent-plugin-hoop"
   gem.description = "Hoop (HDFS http-fs) plugin for Fluent event collector"
-  gem.homepage = "http://github.com/tagomoris/fluent-plugin-hoop"
+  gem.homepage = "https://github.com/fluent/fluent-plugin-hoop"
   gem.summary = gem.description
   # gem.version = File.read("VERSION").strip
   gem.authors = ["TAGOMORI Satoshi"]
