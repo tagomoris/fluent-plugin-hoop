@@ -307,7 +307,7 @@ class Fluent::HoopOutput < Fluent::TimeSlicedOutput
         $log.error "Failed to update authorized cookie, code: #{res.code}, message: #{res.body}"
         raise Fluent::ConfigError, "Failed to update authorized cookie, code: #{res.code}, message: #{res.body}"
       end
-      res = conn.request_put(hdfs_path + "?op=append", data, @authorized_header)
+      res = conn.request_put(path + "?op=append", data, @authorized_header)
     end
     if res.code == '404'
       res = conn.request_post(path + "?op=create&overwrite=false", data, @authorized_header)
