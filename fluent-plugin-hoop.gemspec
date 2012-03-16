@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{fluent-plugin-hoop}
-  s.version = "0.1.1"
+  s.version = "0.1.2"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = [%q{TAGOMORI Satoshi}]
-  s.date = %q{2012-01-26}
+  s.date = %q{2012-03-16}
   s.description = %q{Hoop (HDFS http-fs) plugin for Fluent event collector}
   s.email = %q{tagomoris@gmail.com}
   s.extra_rdoc_files = [
