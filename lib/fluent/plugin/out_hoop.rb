@@ -18,7 +18,7 @@ module FluentExt::PlainTextFormatterMixin
     @output_data_type = conf['output_data_type']
     @output_data_type = 'json' if @output_data_type.nil?
 
-    @field_separator = case @field_separator
+    @field_separator = case conf['field_separator']
                        when 'SPACE' then ' '
                        when 'COMMA' then ','
                        else "\t"
