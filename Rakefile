@@ -15,9 +15,9 @@ require 'jeweler'
 Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
   gem.name = "fluent-plugin-hoop"
-  gem.description = "Hoop (HDFS http-fs) plugin for Fluent event collector"
+  gem.description = "This plugin doesn't support Apache Hadoop's HttpFs. See fluent-plugin-webhdfs."
   gem.homepage = "https://github.com/fluent/fluent-plugin-hoop"
-  gem.summary = gem.description
+  gem.summary = "Cloudera Hoop (Hadoop HDFS HTTP Proxy) plugin for Fluent event collector"
   # gem.version = File.read("VERSION").strip
   gem.authors = ["TAGOMORI Satoshi"]
   gem.email = "tagomoris@gmail.com"
