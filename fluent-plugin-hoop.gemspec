@@ -4,14 +4,14 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = %q{fluent-plugin-hoop}
-  s.version = "0.1.2"
+  s.name = "fluent-plugin-hoop"
+  s.version = "0.1.3"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
-  s.authors = [%q{TAGOMORI Satoshi}]
-  s.date = %q{2012-03-16}
-  s.description = %q{Hoop (HDFS http-fs) plugin for Fluent event collector}
-  s.email = %q{tagomoris@gmail.com}
+  s.authors = ["TAGOMORI Satoshi"]
+  s.date = "2012-06-13"
+  s.description = "This plugin doesn't support Apache Hadoop's HttpFs. See fluent-plugin-webhdfs."
+  s.email = "tagomoris@gmail.com"
   s.extra_rdoc_files = [
     "LICENSE.txt",
     "README.rdoc"
@@ -33,11 +33,11 @@ Gem::Specification.new do |s|
     "test/plugin/test_out_hoop_realserver.rb",
     "test/plugin/test_out_hoop_reconnect.rb"
   ]
-  s.homepage = %q{https://github.com/fluent/fluent-plugin-hoop}
-  s.require_paths = [%q{lib}]
-  s.rubygems_version = %q{1.8.6}
-  s.summary = %q{Hoop (HDFS http-fs) plugin for Fluent event collector}
-  s.test_files = [%q{test/helper.rb}, %q{test/plugin/test_out_hoop.rb}, %q{test/plugin/test_out_hoop_realserver.rb}, %q{test/plugin/test_out_hoop_reconnect.rb}]
+  s.homepage = "https://github.com/fluent/fluent-plugin-hoop"
+  s.require_paths = ["lib"]
+  s.rubygems_version = "1.8.21"
+  s.summary = "Cloudera Hoop (Hadoop HDFS HTTP Proxy) plugin for Fluent event collector"
+  s.test_files = ["test/helper.rb", "test/plugin/test_out_hoop.rb", "test/plugin/test_out_hoop_realserver.rb", "test/plugin/test_out_hoop_reconnect.rb"]
 
   if s.respond_to? :specification_version then
     s.specification_version = 3
