@@ -80,7 +80,7 @@ class HoopOutputTest < Test::Unit::TestCase
     assert_equal true, d.instance.output_include_tag
     assert_equal 'json', d.instance.output_data_type
     assert_equal true, d.instance.add_newline
-    assert_equal "\t", d.instance.field_separator
+    assert_equal "TAB", d.instance.field_separator
 
     assert_nil d.instance.remove_prefix
 
