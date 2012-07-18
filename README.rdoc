@@ -4,12 +4,14 @@
 
 === HoopOutput
 
-Store fluent-event as plain text to HDFS, over Hoop (HDFS http-fs).
+Store fluent-event as plain text to HDFS, over Hoop (HTTP REST API for HDFS).
 
-Hoop is originally written in Cloudera, and merged on Apache Hadoop 0.23 tree. See:
+Hoop is originally written in Cloudera, and merged on Apache Hadoop 0.23 tree, but there is no API compatibility. See:
 
-[Apache Hadoop dev doc] https://github.com/apache/hadoop-common/blob/trunk/hadoop-hdfs-project/hadoop-hdfs-httpfs/src/site/apt/index.apt.vm
 [Cloudera Hoop doc (obsolete)] http://cloudera.github.com/hoop/docs/latest/index.html
+[Apache Hadoop dev doc] https://github.com/apache/hadoop-common/blob/trunk/hadoop-hdfs-project/hadoop-hdfs-httpfs/src/site/apt/index.apt.vm
+
+If you want to use HttpFs (or WebHDFS), use 'fluent-plugin-webhdfs'.
 
 HoopOutput slices data by time (for specified units), and store these data as plain text on hdfs. You can specify to:
 
@@ -17,6 +19,8 @@ HoopOutput slices data by time (for specified units), and store these data as pl
 - include time as line header, or not
 - include tag as line header, or not
 - change field separator (default: TAB)
+
+On your hadoop cluster (especially on CDH3u4), you MUST configure 'append' operation enabled.
 
 == Configuration
 
