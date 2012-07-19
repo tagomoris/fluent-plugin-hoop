@@ -20,7 +20,8 @@ HoopOutput slices data by time (for specified units), and store these data as pl
 - include tag as line header, or not
 - change field separator (default: TAB)
 
-On your hadoop cluster (especially on CDH3u4), you MUST configure 'append' operation enabled.
+On your hadoop cluster (especially on CDH3u4), you MUST configure 'append' operation enabled by 'dfs.support.broken.append' property.
+See: https://groups.google.com/a/cloudera.org/d/topic/cdh-user/eJY6R4ii2X0/discussion
 
 == Configuration
 
